@@ -88,6 +88,20 @@
             border-radius: 4px;
         }
 
+        /* 使い方ボタン */
+        .btn-help {
+            background-color: transparent;
+            color: #666;
+            border: 1px solid #ccc;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+        }
+        .btn-help:hover {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+
         #btn-start {
             background-color: var(--accent-red);
             color: white;
@@ -181,7 +195,7 @@
         #btn-remain { background-color: var(--accent-blue); }
         #btn-reset { background-color: var(--accent-red); }
 
-        /* --- ポップアップ（一覧） --- */
+        /* --- ポップアップ（共通） --- */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -212,6 +226,7 @@
             position: relative;
         }
 
+        /* 一覧用スタイル */
         .goal-list {
             list-style: none;
             padding: 0;
@@ -247,7 +262,7 @@
             transition: background 0.2s;
         }
         .char-box:hover {
-            background-color: #fee; /* 削除示唆色 */
+            background-color: #fee;
             border-color: var(--accent-red);
         }
         .char-box.empty {
@@ -261,7 +276,7 @@
             border-color: #ccc;
         }
 
-        /* ポップアップ内のアクションボタン */
+        /* アクションボタン群 */
         .modal-actions {
             display: flex;
             flex-direction: column;
@@ -280,10 +295,36 @@
             gap: 8px;
         }
         
+        .btn-home-return {
+            background-color: #888;
+            color: white;
+            padding: 12px;
+            font-size: 0.9rem;
+        }
+
         .modal-close {
             background-color: #333;
             color: white;
             padding: 10px 40px;
+        }
+
+        /* 説明ポップアップ用 */
+        .help-text {
+            text-align: left;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: #444;
+            margin-bottom: 20px;
+        }
+        .help-section {
+            margin-bottom: 15px;
+        }
+        .help-title {
+            font-weight: bold;
+            border-left: 3px solid var(--accent-red);
+            padding-left: 8px;
+            margin-bottom: 5px;
+            display: block;
         }
 
         /* コピー完了トースト */
@@ -326,9 +367,12 @@
 
     <div id="home-screen" class="screen">
         <h1>新年の目標メーカー</h1>
-        <p style="margin-bottom:30px; color:#666; text-align:center; font-size:0.9rem;">
+        
+        <p style="margin-bottom:15px; color:#666; text-align:center; font-size:0.9rem;">
             直感で漢字を選び<br>新しい年の目標を紡ぎましょう
         </p>
+
+        <button class="btn-help" onclick="openHelp()">📖 使い方を見る</button>
         
         <div class="setting-group">
             <div class="setting-item">
@@ -375,8 +419,32 @@
                 <button class="btn-ai-copy" onclick="copyPrompt()">
                     <span>🤖</span> AI相談プロンプトをコピー
                 </button>
+                <button class="btn-home-return" onclick="goHome()">
+                    🏠 ホーム画面に戻る
+                </button>
                 <button class="modal-close" onclick="closePopup()">閉じる</button>
             </div>
+        </div>
+    </div>
+
+    <div id="help-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="margin-top:0; font-size:1.2rem; border-bottom:1px solid #eee; padding-bottom:10px;">アプリの使い方</h2>
+            <div class="help-text">
+                <div class="help-section">
+                    <span class="help-title">1. 直感で選ぶ</span>
+                    画面に表示される漢字から、気になるものをタップして選びましょう。
+                </div>
+                <div class="help-section">
+                    <span class="help-title">2. 入れ替える</span>
+                    しっくりこない漢字は「残リセット」ボタンで入れ替えられます。選んだ漢字はそのまま残ります。
+                </div>
+                <div class="help-section">
+                    <span class="help-title">3. AIに相談する</span>
+                    目標が完成したら「AI相談プロンプト」をコピーして、ChatGPTなどに貼り付けてみましょう。意外な解釈を提案してくれます。
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeHelp()">閉じる</button>
         </div>
     </div>
 
@@ -387,31 +455,24 @@
         // 1. 漢字データセット
         // ===============================================
         const kanjiDataset = [
-            // 数値・規模
             "一","二","三","四","五","六","七","八","九","十",
             "百","千","万","億","兆","零","倍","半","全","無",
-            // 具体物・対象
             "茶","珈","琲","酒","水","米","麺","菜","肉","魚",
             "画","音","歌","旅","本","映","湯","庭","花","木",
             "金","宝","株","税","職","業","務","宅","貨","資",
             "歯","髪","肌","筋","骨","腹","腰","脳","眼","指",
             "服","靴","鞄","鏡","鍵","車","窓","床","壁","机",
             "筆","記","帳","簿","暦","状","証","拠","案","類",
-            // 場所・自然
             "室","席","扉","店","塾","局","島","港","街","道",
             "畑","森","空","雲","雨","晴","風","雪","雷","虹",
             "天","地","星","陽","光","闇",
-            // 時間・期間
             "月","火","水","木","金","土","日","曜",
             "週","期","間","年","季","春","夏","秋","冬",
             "朝","昼","夜","瞬","暇","昔","今","次","毎","続",
-            // 位置・関係・色
             "内","外","公","私","表","裏","上","中","下","端",
             "色","彩","白","黒","赤","青","黄","緑","紫","銀",
             "親","子","友","師","己","誰","衆","客","妻","夫",
-            // 感覚・知覚
             "見","観","視","触","香","嗅","味","聴","感",
-            // 動作・状態
             "受","賞","読","書","言","問","答","考","学","習","究","知",
             "通","走","泳","登","投","飛","跳","舞","踊","歩",
             "拓","展","挑","戦","始","終","変","新","改","創",
@@ -490,6 +551,22 @@
             generateNewBoard(settings.boardSize);
             updateStatus();
         }
+        
+        // ホームに戻る処理
+        function goHome() {
+            // 確認（誤操作防止のため、完了時以外も押せるようにする場合）
+            // 今回は結果ポップアップにあるので、基本完了後想定だが、
+            // 途中でも見れるため一応確認を入れてもいいが、UX的にそのまま戻ってもOK
+            // ここではシンプルに戻る
+            closePopup();
+            document.getElementById('main-screen').classList.add('hidden');
+            document.getElementById('home-screen').classList.remove('hidden');
+            
+            // 状態リセット
+            selectedKanjiList = [];
+            currentBoard = [];
+            document.getElementById('board-grid').innerHTML = '';
+        }
 
         // ===============================================
         // 5. ボード生成・描画ロジック
@@ -543,7 +620,6 @@
                 return;
             }
 
-            // ★全体で10秒（10000ms）になるように調整
             const TOTAL_DURATION = 10000;
             const interval = TOTAL_DURATION / unlockedIndices.length;
 
@@ -689,6 +765,17 @@
         function closePopup() {
             document.getElementById('popup-overlay').classList.remove('active');
         }
+        
+        // ヘルプ用
+        function openHelp() {
+            document.getElementById('help-overlay').classList.add('active');
+        }
+        function closeHelp() {
+            document.getElementById('help-overlay').classList.remove('active');
+        }
+        document.getElementById('help-overlay').addEventListener('click', (e) => {
+            if(e.target.id === 'help-overlay') closeHelp();
+        });
 
         function undoSelection(listIndex, charToRemove) {
             selectedKanjiList.splice(listIndex, 1);
@@ -708,21 +795,19 @@
         });
 
         // ===============================================
-        // 7. AIプロンプト作成 & コピー機能 (修正版)
+        // 7. AIプロンプト作成 & コピー機能
         // ===============================================
         function copyPrompt() {
             let promptText = "私は「漢字をランダムに組み合わせて新年の目標を作る」というワークショップを行いました。\n";
             promptText += "そこで選んだ以下の「漢字の組み合わせ」をテーマにして、具体的で前向きな「新年の目標（宣言文）」のアイデアを考えてください。\n\n";
             promptText += "■依頼事項\n";
             
-            // ★追加条件：ボリューム制御
             if (settings.totalGoals > 10) {
                 promptText += "・目標数が多いため、1つの組み合わせにつき「自信のある1案のみ」を出してください。\n";
             } else {
                 promptText += "・それぞれの組み合わせにつき、解釈の異なる案を3パターン出してください（例：ビジネス目標、自己啓発目標、ユニークな目標など）。\n";
             }
 
-            // ★追加条件：必須使用・順不同
             promptText += "・作成される目標文の中に、キーワードとしてその漢字を必ず含めてください。\n";
             promptText += "・漢字の並び順は順不同で構いません。読み方や送り仮名も文脈に合わせて自由に変えてOKです。\n";
             promptText += "・「なぜその解釈になったか」の短い補足も添えてください。\n\n";
