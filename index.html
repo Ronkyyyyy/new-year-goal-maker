@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>新年の目標メーカー</title>
-    <meta property="og:title" content="新年の目標メーカー" />
-    <meta property="og:description" content="直感で漢字を選んで、2026年の目標を生成しよう。AI相談機能付き！" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://ronkyyyyy.github.io/new-year-goal-maker/" />
-    <meta name="twitter:card" content="summary_large_image" />
     <style>
         :root {
             --bg-color: #fcfaf2;
@@ -713,15 +708,25 @@
         });
 
         // ===============================================
-        // 7. AIプロンプト作成 & コピー機能
+        // 7. AIプロンプト作成 & コピー機能 (修正版)
         // ===============================================
         function copyPrompt() {
-            // プロンプト本文の作成（用語を「目標」に変更）
             let promptText = "私は「漢字をランダムに組み合わせて新年の目標を作る」というワークショップを行いました。\n";
             promptText += "そこで選んだ以下の「漢字の組み合わせ」をテーマにして、具体的で前向きな「新年の目標（宣言文）」のアイデアを考えてください。\n\n";
             promptText += "■依頼事項\n";
-            promptText += "・それぞれの組み合わせにつき、解釈の異なる案を3パターン出してください（例：ビジネス目標、自己啓発目標、ユニークな目標など）。\n";
+            
+            // ★追加条件：ボリューム制御
+            if (settings.totalGoals > 10) {
+                promptText += "・目標数が多いため、1つの組み合わせにつき「自信のある1案のみ」を出してください。\n";
+            } else {
+                promptText += "・それぞれの組み合わせにつき、解釈の異なる案を3パターン出してください（例：ビジネス目標、自己啓発目標、ユニークな目標など）。\n";
+            }
+
+            // ★追加条件：必須使用・順不同
+            promptText += "・作成される目標文の中に、キーワードとしてその漢字を必ず含めてください。\n";
+            promptText += "・漢字の並び順は順不同で構いません。読み方や送り仮名も文脈に合わせて自由に変えてOKです。\n";
             promptText += "・「なぜその解釈になったか」の短い補足も添えてください。\n\n";
+
             promptText += "■私の選んだ漢字リスト\n";
 
             let hasContent = false;
@@ -750,12 +755,10 @@
 
             promptText += "\nよろしくお願いします。";
 
-            // クリップボードへコピー（フォールバック対応）
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(promptText).then(() => {
                     showToast();
                 }).catch(err => {
-                    console.error('Async: Could not copy text: ', err);
                     fallbackCopyTextToClipboard(promptText);
                 });
             } else {
@@ -779,7 +782,7 @@
                 else alert("コピーに失敗しました。");
             } catch (err) {
                 console.error('Fallback: Oops, unable to copy', err);
-                alert("お使いの環境ではコピー機能が制限されています。\n申し訳ありません。");
+                alert("お使いの環境ではコピー機能が制限されています。");
             }
             document.body.removeChild(textArea);
         }
