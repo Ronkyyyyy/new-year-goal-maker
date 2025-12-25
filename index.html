@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新年の目標メーカー</title>
+    <style>
+        :root {
+            --bg-color: #fcfaf2;
+            --text-color: #333;
+            --accent-red: #c94444;
+            --accent-blue: #446cc9;
+            --accent-green: #2e8b57;
+            --card-bg: #ffffff;
+            --locked-bg: #e0e0e0;
+        }
+
+        body {
+            font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- 共通スタイル --- */
+        h1 {
+            text-align: center;
+            border-bottom: 2px solid var(--accent-red);
+            padding: 15px;
+            margin: 0 0 20px 0;
+            font-size: 1.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        button {
+            font-family: "Hiragino Kaku Gothic ProN", sans-serif;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        button:active { transform: scale(0.98); }
+        button:hover { opacity: 0.9; }
+
+        .screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- ホーム画面 --- */
+        .setting-group {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .setting-item {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .setting-item label { font-weight: bold; font-size: 0.95rem; }
+        .setting-item input {
+            width: 60px;
+            padding: 8px;
+            font-size: 1rem;
+            text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        #btn-start {
+            background-color: var(--accent-red);
+            color: white;
+            padding: 15px 50px;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(201, 68, 68, 0.3);
+        }
+
+        /* --- メイン画面 --- */
+        .status-header {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #555;
+            font-weight: bold;
+            height: 1.5rem; /* 高さ確保 */
+        }
+
+        .grid-container {
+            display: grid;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 20px;
+            /* 列数はJSで制御 */
+        }
+
+        .kanji-card {
+            aspect-ratio: 1;
+            background-color: var(--card-bg);
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            cursor: pointer;
+            user-select: none;
+            opacity: 0; /* アニメーション用初期状態 */
+            transform: scale(0.8);
+            transition: transform 0.2s;
+        }
+
+        /* 表示アニメーション */
+        .kanji-card.show {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 0.5s ease-out, transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        .kanji-card:hover { transform: translateY(-2px); }
+        
+        .kanji-card.locked {
+            background-color: var(--locked-bg);
+            color: #999;
+            box-shadow: inset 1px 1px 3px rgba(0,0,0,0.1);
+            cursor: default;
+            transform: none !important;
+        }
+        .kanji-card.locked::after {
+            content: '済';
+            position: absolute;
+            bottom: 2px;
+            right: 4px;
+            font-size: 0.7rem;
+            color: #aaa;
+        }
+
+        /* フッターボタン */
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: auto;
+            padding-bottom: 20px;
+        }
+        
+        .btn-ctrl {
+            padding: 12px 20px;
+            color: white;
+            font-size: 0.95rem;
+        }
+        .btn-ctrl:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #ccc !important;
+        }
+
+        #btn-list { background-color: #555; }
+        #btn-remain { background-color: var(--accent-blue); }
+        #btn-reset { background-color: var(--accent-red); }
+
+        /* --- ポップアップ（一覧） --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .goal-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .goal-item {
+            margin-bottom: 15px;
+            border-bottom: 1px dotted #ccc;
+            padding-bottom: 5px;
+        }
+        .goal-title {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        .goal-chars {
+            display: flex;
+            gap: 8px;
+        }
+        .char-box {
+            width: 45px;
+            height: 45px;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            cursor: pointer;
+            background: #fff;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .char-box:hover {
+            background-color: #fee; /* 削除示唆色 */
+            border-color: var(--accent-red);
+        }
+        .char-box.empty {
+            border: 1px dashed #ccc;
+            background: #f9f9f9;
+            cursor: default;
+            color: #ddd;
+        }
+        .char-box.empty:hover {
+            background: #f9f9f9;
+            border-color: #ccc;
+        }
+
+        /* ポップアップ内のアクションボタン */
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-ai-copy {
+            background-color: var(--accent-green);
+            color: white;
+            padding: 12px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .modal-close {
+            background-color: #333;
+            color: white;
+            padding: 10px 40px;
+        }
+
+        /* コピー完了トースト */
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 200;
+        }
+        #toast.show { opacity: 1; }
+
+        /* 完了エフェクト */
+        @keyframes flash {
+            0% { background-color: rgba(255,255,255,0); }
+            50% { background-color: rgba(255,215,0,0.3); }
+            100% { background-color: rgba(255,255,255,0); }
+        }
+        .flash-effect {
+            animation: flash 0.6s ease-out;
+        }
+
+        /* モバイル調整 */
+        @media (max-width: 480px) {
+            .kanji-card { font-size: 1.6rem; }
+            h1 { font-size: 1.3rem; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="home-screen" class="screen">
+        <h1>新年の目標メーカー</h1>
+        <p style="margin-bottom:30px; color:#666; text-align:center; font-size:0.9rem;">
+            直感で漢字を選び<br>新しい年の目標を紡ぎましょう
+        </p>
+        
+        <div class="setting-group">
+            <div class="setting-item">
+                <label>作成する目標の数</label>
+                <input type="number" id="inp-total-goals" value="5" min="1" max="100">
+            </div>
+            <div class="setting-item">
+                <label>1つの目標の文字数</label>
+                <input type="number" id="inp-chars-per-goal" value="2" min="1" max="4">
+            </div>
+            <div class="setting-item">
+                <label>ボードに表示する漢字数</label>
+                <input type="number" id="inp-board-size" value="10" min="4" max="25">
+            </div>
+        </div>
+
+        <button id="btn-start">始める</button>
+    </div>
+
+    <div id="main-screen" class="screen hidden">
+        <h1>新年の目標メーカー</h1>
+        
+        <div class="status-header" id="status-text">
+            </div>
+
+        <div class="grid-container" id="board-grid">
+            </div>
+
+        <div class="controls">
+            <button id="btn-list" class="btn-ctrl">目標一覧</button>
+            <button id="btn-remain" class="btn-ctrl">残リセット</button>
+            <button id="btn-reset" class="btn-ctrl">全リセット</button>
+        </div>
+    </div>
+
+    <div id="popup-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="margin-top:0; font-size:1.2rem; border-bottom:1px solid #eee; padding-bottom:10px;">あなたの目標一覧</h2>
+            <p style="font-size:0.8rem; color:#666;">漢字をタップすると取り消せます</p>
+            <ul class="goal-list" id="goal-list-container">
+                </ul>
+            
+            <div class="modal-actions">
+                <button class="btn-ai-copy" onclick="copyPrompt()">
+                    <span>🤖</span> AI相談プロンプトをコピー
+                </button>
+                <button class="modal-close" onclick="closePopup()">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">プロンプトをコピーしました！</div>
+
+    <script>
+        // ===============================================
+        // 1. 漢字データセット
+        // ===============================================
+        const kanjiDataset = [
+            // 数値・規模
+            "一","二","三","四","五","六","七","八","九","十",
+            "百","千","万","億","兆","零","倍","半","全","無",
+            // 具体物・対象
+            "茶","珈","琲","酒","水","米","麺","菜","肉","魚",
+            "画","音","歌","旅","本","映","湯","庭","花","木",
+            "金","宝","株","税","職","業","務","宅","貨","資",
+            "歯","髪","肌","筋","骨","腹","腰","脳","眼","指",
+            "服","靴","鞄","鏡","鍵","車","窓","床","壁","机",
+            "筆","記","帳","簿","暦","状","証","拠","案","類",
+            // 場所・自然
+            "室","席","扉","店","塾","局","島","港","街","道",
+            "畑","森","空","雲","雨","晴","風","雪","雷","虹",
+            "天","地","星","陽","光","闇",
+            // 時間・期間
+            "月","火","水","木","金","土","日","曜",
+            "週","期","間","年","季","春","夏","秋","冬",
+            "朝","昼","夜","瞬","暇","昔","今","次","毎","続",
+            // 位置・関係・色
+            "内","外","公","私","表","裏","上","中","下","端",
+            "色","彩","白","黒","赤","青","黄","緑","紫","銀",
+            "親","子","友","師","己","誰","衆","客","妻","夫",
+            // 感覚・知覚
+            "見","観","視","触","香","嗅","味","聴","感",
+            // 動作・状態
+            "受","賞","読","書","言","問","答","考","学","習","究","知",
+            "通","走","泳","登","投","飛","跳","舞","踊","歩",
+            "拓","展","挑","戦","始","終","変","新","改","創",
+            "整","理","洗","磨","拭","掃","捨","断","縫","編",
+            "塗","描","売","買","貸","借","貯","払","得","損",
+            "稼","募","守","攻","待","急","止","進","戻","直",
+            "交","混","信","疑","熱","冷","甘","苦","軽","重",
+            "早","遅","幸","福","笑","泣","怒","喜","楽","謝",
+            "愛","恋","夢","希","望","志","誠","実","許","救","導","詫"
+        ];
+
+        // ===============================================
+        // 2. ユーティリティ
+        // ===============================================
+        function numberToDaiji(num) {
+            if (num === 100) return "佰";
+            const digits = ["", "壱", "弐", "参", "肆", "伍", "陸", "漆", "捌", "玖"];
+            if (num < 10) return digits[num];
+            
+            const tens = Math.floor(num / 10);
+            const ones = num % 10;
+            let result = "";
+            if (tens === 1) result += "拾";
+            else result += digits[tens] + "拾";
+            
+            if (ones > 0) result += digits[ones];
+            return result;
+        }
+
+        // ===============================================
+        // 3. 状態管理
+        // ===============================================
+        let settings = { totalGoals: 5, charsPerGoal: 2, boardSize: 10 };
+        let selectedKanjiList = [];
+        let currentBoard = []; 
+        let isAnimating = false;
+
+        // ===============================================
+        // 4. 初期化・画面遷移
+        // ===============================================
+        document.getElementById('btn-start').addEventListener('click', startGame);
+        document.getElementById('btn-list').addEventListener('click', openPopup);
+        document.getElementById('btn-remain').addEventListener('click', remainReset);
+        document.getElementById('btn-reset').addEventListener('click', fullReset);
+
+        function startGame() {
+            const tg = parseInt(document.getElementById('inp-total-goals').value) || 5;
+            const cpg = parseInt(document.getElementById('inp-chars-per-goal').value) || 2;
+            let bs = parseInt(document.getElementById('inp-board-size').value) || 10;
+
+            // 安全装置
+            const requiredTotal = tg * cpg;
+            if (bs < requiredTotal) {
+                alert(`設定された目標を作るには最低 ${requiredTotal} 個の漢字枠が必要です。\nボードの表示数を ${requiredTotal} 個に自動調整して開始します。`);
+                bs = requiredTotal;
+                document.getElementById('inp-board-size').value = bs;
+            }
+
+            settings = { totalGoals: tg, charsPerGoal: cpg, boardSize: bs };
+
+            const grid = document.getElementById('board-grid');
+            grid.className = 'grid-container';
+            if(bs <= 4) grid.style.gridTemplateColumns = "repeat(2, 1fr)";
+            else if(bs <= 9) grid.style.gridTemplateColumns = "repeat(3, 1fr)";
+            else if(bs <= 16) grid.style.gridTemplateColumns = "repeat(4, 1fr)";
+            else grid.style.gridTemplateColumns = "repeat(5, 1fr)";
+
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('main-screen').classList.remove('hidden');
+
+            initGame();
+        }
+
+        function initGame() {
+            selectedKanjiList = [];
+            generateNewBoard(settings.boardSize);
+            updateStatus();
+        }
+
+        // ===============================================
+        // 5. ボード生成・描画ロジック
+        // ===============================================
+        
+        function getRandomKanji(count, excludeList = []) {
+            let candidates = kanjiDataset.filter(k => !excludeList.includes(k));
+            if(candidates.length < count) candidates = [...kanjiDataset];
+            
+            const result = [];
+            for(let i=0; i<count; i++){
+                const idx = Math.floor(Math.random() * candidates.length);
+                result.push(candidates[idx]);
+                candidates.splice(idx, 1);
+            }
+            return result;
+        }
+
+        function generateNewBoard(count) {
+            const chars = getRandomKanji(count);
+            currentBoard = chars.map(c => ({ char: c, locked: false }));
+            renderBoardWithAnimation();
+        }
+
+        function renderBoardWithAnimation() {
+            const grid = document.getElementById('board-grid');
+            grid.innerHTML = '';
+            isAnimating = true;
+            updateControlButtons();
+
+            currentBoard.forEach((item, index) => {
+                const el = document.createElement('div');
+                el.className = 'kanji-card';
+                el.textContent = item.char;
+                
+                if(item.locked) {
+                    el.classList.add('locked', 'show');
+                } else {
+                    el.addEventListener('click', () => onCardClick(index));
+                }
+                grid.appendChild(el);
+            });
+
+            const unlockedIndices = currentBoard
+                .map((item, i) => item.locked ? -1 : i)
+                .filter(i => i !== -1);
+            
+            if(unlockedIndices.length === 0) {
+                isAnimating = false;
+                updateControlButtons();
+                return;
+            }
+
+            // ★全体で10秒（10000ms）になるように調整
+            const TOTAL_DURATION = 10000;
+            const interval = TOTAL_DURATION / unlockedIndices.length;
+
+            unlockedIndices.forEach((idx, order) => {
+                setTimeout(() => {
+                    if(grid.children[idx]) {
+                        grid.children[idx].classList.add('show');
+                    }
+                    if (order === unlockedIndices.length - 1) {
+                        isAnimating = false;
+                        updateControlButtons();
+                    }
+                }, order * interval);
+            });
+        }
+
+        function renderBoardSimple() {
+            const grid = document.getElementById('board-grid');
+            Array.from(grid.children).forEach((card, index) => {
+                const item = currentBoard[index];
+                if(item.locked) card.classList.add('locked');
+                else card.classList.remove('locked');
+                card.textContent = item.char;
+            });
+        }
+
+        function onCardClick(index) {
+            if(isAnimating) return;
+            const item = currentBoard[index];
+            if(item.locked) return;
+
+            const maxChars = settings.totalGoals * settings.charsPerGoal;
+            if(selectedKanjiList.length >= maxChars) return;
+
+            item.locked = true;
+            selectedKanjiList.push(item.char);
+            
+            renderBoardSimple();
+            updateStatus();
+            checkCompletion();
+        }
+
+        function updateStatus() {
+            const currentCount = selectedKanjiList.length;
+            const total = settings.totalGoals * settings.charsPerGoal;
+            
+            if(currentCount >= total) {
+                document.getElementById('status-text').textContent = "全ての目標が完成しました！";
+                return;
+            }
+
+            const currentGoalIndex = Math.floor(currentCount / settings.charsPerGoal);
+            const numText = numberToDaiji(currentGoalIndex + 1);
+            const inGoalCount = (currentCount % settings.charsPerGoal) + 1;
+            
+            document.getElementById('status-text').textContent = 
+                `${numText}ノ目標 (${inGoalCount}/${settings.charsPerGoal}文字) を選択中...`;
+        }
+
+        function checkCompletion() {
+            const total = settings.totalGoals * settings.charsPerGoal;
+            if(selectedKanjiList.length === total) {
+                document.body.classList.add('flash-effect');
+                setTimeout(() => document.body.classList.remove('flash-effect'), 600);
+                setTimeout(() => openPopup(), 1000);
+            }
+        }
+
+        function updateControlButtons() {
+            const btns = document.querySelectorAll('.btn-ctrl');
+            btns.forEach(b => b.disabled = isAnimating);
+        }
+
+        // ===============================================
+        // 6. リセット & 一覧機能
+        // ===============================================
+
+        function remainReset() {
+            if(isAnimating) return;
+            const exclude = [...currentBoard.filter(i => i.locked).map(i => i.char), ...selectedKanjiList];
+            
+            const unlockedIndices = currentBoard.map((item, i) => item.locked ? -1 : i).filter(i => i !== -1);
+            if(unlockedIndices.length === 0) return;
+
+            const newChars = getRandomKanji(unlockedIndices.length, exclude);
+            let newCharIdx = 0;
+            currentBoard.forEach(item => {
+                if(!item.locked) {
+                    item.char = newChars[newCharIdx++];
+                }
+            });
+
+            renderBoardWithAnimation();
+        }
+
+        function fullReset() {
+            if(isAnimating) return;
+            if(!confirm("現在の進捗を全て破棄して、最初からやり直しますか？")) return;
+            initGame();
+        }
+
+        function openPopup() {
+            const listContainer = document.getElementById('goal-list-container');
+            listContainer.innerHTML = '';
+
+            for(let i=0; i<settings.totalGoals; i++) {
+                const li = document.createElement('li');
+                li.className = 'goal-item';
+
+                const title = document.createElement('div');
+                title.className = 'goal-title';
+                const numText = numberToDaiji(i + 1);
+                title.textContent = `${numText}ノ目標`;
+                li.appendChild(title);
+
+                const charContainer = document.createElement('div');
+                charContainer.className = 'goal-chars';
+
+                for(let j=0; j<settings.charsPerGoal; j++) {
+                    const globalIndex = i * settings.charsPerGoal + j;
+                    const char = selectedKanjiList[globalIndex];
+                    
+                    const box = document.createElement('div');
+                    box.className = 'char-box';
+                    
+                    if(char) {
+                        box.textContent = char;
+                        box.onclick = () => undoSelection(globalIndex, char);
+                        box.title = "タップして取り消し";
+                    } else {
+                        box.className += ' empty';
+                        box.textContent = '？';
+                    }
+                    charContainer.appendChild(box);
+                }
+                li.appendChild(charContainer);
+                listContainer.appendChild(li);
+            }
+
+            document.getElementById('popup-overlay').classList.add('active');
+        }
+
+        function closePopup() {
+            document.getElementById('popup-overlay').classList.remove('active');
+        }
+
+        function undoSelection(listIndex, charToRemove) {
+            selectedKanjiList.splice(listIndex, 1);
+            for (let item of currentBoard) {
+                if(item.char === charToRemove && item.locked) {
+                    item.locked = false;
+                    break;
+                }
+            }
+            openPopup();
+            renderBoardSimple();
+            updateStatus();
+        }
+
+        document.getElementById('popup-overlay').addEventListener('click', (e) => {
+            if(e.target.id === 'popup-overlay') closePopup();
+        });
+
+        // ===============================================
+        // 7. AIプロンプト作成 & コピー機能
+        // ===============================================
+        function copyPrompt() {
+            // プロンプト本文の作成（用語を「目標」に変更）
+            let promptText = "私は「漢字をランダムに組み合わせて新年の目標を作る」というワークショップを行いました。\n";
+            promptText += "そこで選んだ以下の「漢字の組み合わせ」をテーマにして、具体的で前向きな「新年の目標（宣言文）」のアイデアを考えてください。\n\n";
+            promptText += "■依頼事項\n";
+            promptText += "・それぞれの組み合わせにつき、解釈の異なる案を3パターン出してください（例：ビジネス目標、自己啓発目標、ユニークな目標など）。\n";
+            promptText += "・「なぜその解釈になったか」の短い補足も添えてください。\n\n";
+            promptText += "■私の選んだ漢字リスト\n";
+
+            let hasContent = false;
+
+            for(let i = 0; i < settings.totalGoals; i++) {
+                const startIndex = i * settings.charsPerGoal;
+                const slice = selectedKanjiList.slice(startIndex, startIndex + settings.charsPerGoal);
+                
+                const label = `${numberToDaiji(i+1)}ノ目標`;
+                let contentStr = "";
+
+                if(slice.length > 0) {
+                    contentStr = `[ ${slice.join(' ] [ ')} ]`;
+                    hasContent = true;
+                } else {
+                    contentStr = "(未選択)";
+                }
+                
+                promptText += `${label}：${contentStr}\n`;
+            }
+
+            if(!hasContent) {
+                alert("目標がまだ何も選択されていません。");
+                return;
+            }
+
+            promptText += "\nよろしくお願いします。";
+
+            // クリップボードへコピー（フォールバック対応）
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(promptText).then(() => {
+                    showToast();
+                }).catch(err => {
+                    console.error('Async: Could not copy text: ', err);
+                    fallbackCopyTextToClipboard(promptText);
+                });
+            } else {
+                fallbackCopyTextToClipboard(promptText);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                var successful = document.execCommand('copy');
+                if(successful) showToast();
+                else alert("コピーに失敗しました。");
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert("お使いの環境ではコピー機能が制限されています。\n申し訳ありません。");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+    </script>
+</body>
+</html>
